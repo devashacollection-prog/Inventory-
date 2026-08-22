@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Case — Jewellery Catalog</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1c1917;
+    --card: #252119;
+    --border: #3a3532;
+    --text: #f5f0e8;
+    --muted: #a89f94;
+    --faint: #7a7168;
+    --gold: #c9a24b;
+    --gold-light: #dab662;
+    --green: #7fa87f;
+    --red: #ef4444;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .serif { font-family: 'Cormorant Garamond', serif; }
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 2rem 1.5rem;
+  }
+  .header-inner { max-width: 900px; margin: 0 auto; }
+  .rule-row { display: flex; align-items: center; gap: 0.75rem; }
+  .rule { flex: 1; height: 1px; background: linear-gradient(to right, transparent, rgba(201,162,75,0.6), transparent); }
+  .eyebrow { font-size: 0.7rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); white-space: nowrap; }
+  h1.title { text-align: center; font-size: 2.4rem; font-weight: 600; letter-spacing: 0.02em; margin: 1rem 0 0.4rem; }
+  .subtitle { text-align: center; font-size: 0.9rem; color: var(--muted); margin: 0; }
+  main { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 2rem; }
+  .summary-card { border: 1px solid var(--border); background: var(--card); border-radius: 12px; padding: 0.9rem 1rem; }
+  .summary-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--faint); margin: 0; }
+  .summary-value { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; margin: 0.2rem 0 0; }
+  .summary-value.accent { color: var(--gold); }
+  .summary-sub { font-size: 0.62rem; color: var(--faint); margin: 0; }
+
+  .toolbar { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; }
+  .search-wrap { position: relative; flex: 1; }
+  .search-wrap svg { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--faint); pointer-events: none; }
+  #searchInput {
+    width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 999px;
+    padding: 0.6rem 1rem 0.6rem 2.4rem; color: var(--text); font-size: 0.85rem; outline: none;
+  }
+  #searchInput::placeholder { color: var(--faint); }
+  #searchInput:focus { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+
+  .btn-gold {
+    display: flex; align-items: center; gap: 0.4rem; background: var(--gold); color: var(--bg);
+    border: none; border-radius: 999px; padding: 0.6rem 1.2rem; font-size: 0.85rem; font-weight: 500;
+    cursor: pointer; white-space: nowrap; transition: background 0.15s;
+  }
+  .btn-gold:hover { background: var(--gold-light); }
+  .btn-gold:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-outline {
+    display: flex; align-items: center; gap: 0.4rem; background: transparent; color: var(--text);
+    border: 1px solid var(--border); border-radius: 999px; padding: 0.6rem 1rem; font-size: 0.85rem;
+    font-weight: 500; cursor: pointer; white-space: nowrap; transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-outline:hover { border-color: rgba(201,162,75,0.6); color: var(--gold); }
+  .btn-outline:disabled { opacity: 0.4; cursor: not-allowed; }
+  @media (max-width: 480px) { .btn-label { display: none; } }
+
+  .empty-state { margin-top: 4rem; text-align: center; }
+  .empty-icon {
+    width: 64px; height: 64px; border: 1px solid var(--border); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: var(--faint);
+  }
+  .empty-state p.title { font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; margin: 0; }
+  .empty-state p.desc { font-size: 0.85rem; color: var(--faint); max-width: 280px; margin: 0.3rem auto 0; }
+
+  .grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;
+  }
+  @media (min-width: 640px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (min-width: 900px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+
+  .item-card {
+    position: relative; border: 1px solid var(--border); background: var(--card);
+    border-radius: 12px; overflow: hidden; transition: border-color 0.15s;
+  }
+  .item-card:hover { border-color: rgba(201,162,75,0.5); }
+  .item-card .del-btn {
+    position: absolute; top: 8px; right: 8px; z-index: 2; background: rgba(0,0,0,0.6);
+    border: none; border-radius: 999px; padding: 6px; color: var(--text); cursor: pointer;
+    opacity: 0; transition: opacity 0.15s, background 0.15s;
+  }
+  .item-card:hover .del-btn { opacity: 1; }
+  .item-card .del-btn:hover { background: rgba(239,68,68,0.8); }
+  .item-img-wrap { aspect-ratio: 1 / 1; width: 100%; background: var(--bg); display: flex; align-items: center; justify-content: center; }
+  .item-img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .item-img-wrap svg { color: var(--border); }
+  .item-body { padding: 0.75rem; }
+  .item-name { font-family: 'Cormorant Garamond', serif; font-size: 0.95rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-prices { display: flex; justify-content: space-between; font-size: 0.75rem; margin-top: 0.45rem; }
+  .item-cost { color: var(--faint); }
+  .item-sell { color: var(--gold); font-weight: 600; }
+  .item-margin { display: flex; align-items: center; gap: 0.25rem; font-size: 0.65rem; color: var(--faint); margin-top: 0.35rem; }
+  .item-margin svg { color: var(--green); }
+
+  .no-match { text-align: center; color: var(--faint); font-size: 0.85rem; margin-top: 3rem; }
+
+  /* Modal */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    align-items: center; justify-content: center; padding: 1rem; z-index: 50;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    width: 100%; max-width: 420px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.5rem;
+  }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+  .modal-head h2 { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; margin: 0; }
+  .modal-close { background: none; border: none; color: var(--muted); cursor: pointer; border-radius: 999px; padding: 4px; display: flex; }
+  .modal-close:hover { background: var(--border); color: var(--text); }
+
+  .upload-box {
+    height: 160px; border: 2px dashed var(--border); border-radius: 12px; background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem;
+    color: var(--faint); cursor: pointer; margin-bottom: 1rem; overflow: hidden; transition: border-color 0.15s, color 0.15s;
+  }
+  .upload-box:hover { border-color: rgba(201,162,75,0.6); color: var(--gold); }
+  .upload-box img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
+  .upload-box span { font-size: 0.75rem; }
+
+  .field { margin-bottom: 0.75rem; }
+  .field label { display: block; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); margin-bottom: 0.3rem; }
+  .field input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.55rem 0.7rem; color: var(--text); font-size: 0.85rem; outline: none; font-family: inherit;
+  }
+  .field input:focus { border-color: var(--gold); }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+  .margin-preview { font-size: 0.75rem; color: var(--muted); margin: 0 0 0.5rem; min-height: 1.1em; }
+  .margin-preview .amt { color: var(--gold); }
+
+  .submit-btn {
+    width: 100%; margin-top: 0.5rem; background: var(--gold); color: var(--bg); border: none;
+    border-radius: 999px; padding: 0.65rem; font-size: 0.85rem; font-weight: 500; cursor: pointer;
+  }
+  .submit-btn:hover { background: var(--gold-light); }
+  .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  footer { border-top: 1px solid var(--border); padding: 1.5rem; text-align: center; font-size: 0.75rem; color: var(--faint); }
+
+  .toast {
+    position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%) translateY(10px);
+    background: var(--card); border: 1px solid var(--border); color: var(--text);
+    padding: 0.6rem 1.1rem; border-radius: 999px; font-size: 0.8rem; opacity: 0; pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s; z-index: 100;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .visually-hidden {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="rule-row">
+      <div class="rule"></div>
+      <span class="eyebrow">Catalog</span>
+      <div class="rule"></div>
+    </div>
+    <h1 class="title serif">The Case</h1>
+    <p class="subtitle">Track every piece — cost, price, and the margin between.</p>
+  </div>
+</header>
+
+<main>
+  <div class="summary" id="summary" style="display:none;">
+    <div class="summary-card">
+      <p class="summary-label">Pieces</p>
+      <p class="summary-value serif" id="sumCount">0</p>
+    </div>
+    <div class="summary-card">
+      <p class="summary-label">Stock cost</p>
+      <p class="summary-value serif" id="sumCost">₹0</p>
+    </div>
+    <div class="summary-card">
+      <p class="summary-label">Potential margin</p>
+      <p class="summary-value serif accent" id="sumMargin">₹0</p>
+      <p class="summary-sub" id="sumPct">0% avg</p>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="text" id="searchInput" placeholder="Search pieces..." />
+    </div>
+    <button class="btn-outline" id="backupBtn" title="Download a backup of your catalog">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      <span class="btn-label">Backup</span>
+    </button>
+    <button class="btn-outline" id="restoreBtn" title="Restore from a backup file">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 9V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v4M7 14l5-5 5 5M12 9v12"/></svg>
+      <span class="btn-label">Restore</span>
+    </button>
+    <input type="file" id="restoreInput" accept="application/json,.json" class="visually-hidden" />
+    <button class="btn-gold" id="openAddBtn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      Add piece
+    </button>
+  </div>
+
+  <div class="empty-state" id="emptyState">
+    <div class="empty-icon">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15V6a3 3 0 0 0-3-3H6a3 3 0 0 0-3 3v9"/><path d="M3 15h18v3a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z"/><path d="M9 9h1M14 6v6"/></svg>
+    </div>
+    <p class="title serif">The case is empty</p>
+    <p class="desc">Add your first piece — a photo, what it cost you, and what you'll sell it for.</p>
+  </div>
+
+  <div class="grid" id="itemGrid"></div>
+  <p class="no-match" id="noMatch" style="display:none;"></p>
+</main>
+
+<footer>Your catalog is saved on this device. Use "Backup" anytime to download a copy, and "Restore" to load one back in.</footer>
+
+<!-- Add Item Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>New piece</h2>
+      <button class="modal-close" id="closeModalBtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <label class="upload-box" id="uploadBox">
+      <svg id="uploadIcon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15V6a3 3 0 0 0-3-3H6a3 3 0 0 0-3 3v9"/><path d="M3 15h18v3a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z"/><path d="M15 9v6M12 12h6"/></svg>
+      <span id="uploadLabel">Upload photo</span>
+      <input type="file" id="imageInput" accept="image/*" class="visually-hidden" />
+    </label>
+
+    <div class="field">
+      <label>Item name</label>
+      <input type="text" id="nameInput" placeholder="e.g. Kundan choker set" />
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Cost price (₹)</label>
+        <input type="number" id="costInput" placeholder="0" inputmode="decimal" />
+      </div>
+      <div class="field">
+        <label>Sell price (₹)</label>
+        <input type="number" id="sellInput" placeholder="0" inputmode="decimal" />
+      </div>
+    </div>
+    <p class="margin-preview" id="marginPreview"></p>
+    <button class="submit-btn" id="submitBtn" disabled>Add to catalog</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const STORAGE_KEY = 'jewellery_catalog_items';
+  let items = [];
+  let pendingImage = null;
+
+  // ---- Storage helpers (localStorage; falls back gracefully if unavailable) ----
+  function loadItems() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      items = raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      items = [];
+      showToast("Couldn't load saved data — starting fresh.");
+    }
+  }
+
+  function saveItems() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    } catch (e) {
+      showToast("Couldn't save — your browser storage may be full or disabled.");
+    }
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  function fmtINR(n) {
+    return '₹' + Number(n).toLocaleString('en-IN');
+  }
+
+  // ---- Rendering ----
+  function render() {
+    const grid = document.getElementById('itemGrid');
+    const empty = document.getElementById('emptyState');
+    const summary = document.getElementById('summary');
+    const noMatch = document.getElementById('noMatch');
+    const search = document.getElementById('searchInput').value.toLowerCase();
+
+    grid.innerHTML = '';
+
+    if (items.length === 0) {
+      empty.style.display = 'block';
+      summary.style.display = 'none';
+      noMatch.style.display = 'none';
+      return;
+    }
+    empty.style.display = 'none';
+    summary.style.display = 'grid';
+
+    const totalCost = items.reduce((s, i) => s + i.cost, 0);
+    const totalSell = items.reduce((s, i) => s + i.sell, 0);
+    const totalMargin = totalSell - totalCost;
+    const avgPct = totalCost > 0 ? Math.round((totalMargin / totalCost) * 100) : 0;
+
+    document.getElementById('sumCount').textContent = items.length;
+    document.getElementById('sumCost').textContent = fmtINR(totalCost);
+    document.getElementById('sumMargin').textContent = fmtINR(totalMargin);
+    document.getElementById('sumPct').textContent = avgPct + '% avg';
+
+    const filtered = items.filter(i => i.name.toLowerCase().includes(search));
+
+    if (filtered.length === 0) {
+      noMatch.style.display = 'block';
+      noMatch.textContent = `No pieces match "${document.getElementById('searchInput').value}".`;
+      return;
+    }
+    noMatch.style.display = 'none';
+
+    filtered.forEach(item => {
+      const margin = item.sell - item.cost;
+      const pct = item.cost > 0 ? Math.round((margin / item.cost) * 100) : 0;
+
+      const card = document.createElement('div');
+      card.className = 'item-card';
+      card.innerHTML = `
+        <button class="del-btn" data-id="${item.id}" aria-label="Remove ${escapeHtml(item.name)}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/></svg>
+        </button>
+        <div class="item-img-wrap">
+          ${item.image
+            ? `<img src="${item.image}" alt="${escapeHtml(item.name)}" />`
+            : `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15V6a3 3 0 0 0-3-3H6a3 3 0 0 0-3 3v9"/><path d="M3 15h18v3a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z"/></svg>`
+          }
+        </div>
+        <div class="item-body">
+          <p class="item-name serif">${escapeHtml(item.name)}</p>
+          <div class="item-prices">
+            <span class="item-cost">${fmtINR(item.cost)}</span>
+            <span class="item-sell">${fmtINR(item.sell)}</span>
+          </div>
+          <div class="item-margin">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 7 13.5 15.5 8.5 10.5 2 17M22 7h-6M22 7v6"/></svg>
+            <span>+${fmtINR(margin)} (${pct}%)</span>
+          </div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+
+    document.querySelectorAll('.del-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = Number(btn.dataset.id);
+        items = items.filter(i => i.id !== id);
+        saveItems();
+        render();
+      });
+    });
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ---- Modal ----
+  const overlay = document.getElementById('modalOverlay');
+  const nameInput = document.getElementById('nameInput');
+  const costInput = document.getElementById('costInput');
+  const sellInput = document.getElementById('sellInput');
+  const submitBtn = document.getElementById('submitBtn');
+  const marginPreview = document.getElementById('marginPreview');
+  const uploadBox = document.getElementById('uploadBox');
+  const imageInput = document.getElementById('imageInput');
+  const uploadLabel = document.getElementById('uploadLabel');
+
+  function openModal() {
+    overlay.classList.add('open');
+  }
+  function closeModal() {
+    overlay.classList.remove('open');
+    resetForm();
+  }
+  function resetForm() {
+    nameInput.value = '';
+    costInput.value = '';
+    sellInput.value = '';
+    imageInput.value = '';
+    pendingImage = null;
+    uploadBox.querySelector('img')?.remove();
+    document.getElementById('uploadIcon').style.display = '';
+    uploadLabel.style.display = '';
+    updateFormState();
+  }
+
+  function updateFormState() {
+    const cost = parseFloat(costInput.value);
+    const sell = parseFloat(sellInput.value);
+    const valid = nameInput.value.trim() && costInput.value && sellInput.value;
+    submitBtn.disabled = !valid;
+
+    if (costInput.value && sellInput.value && !isNaN(cost) && !isNaN(sell) && cost > 0) {
+      const margin = sell - cost;
+      const pct = Math.round((margin / cost) * 100);
+      marginPreview.innerHTML = `Margin: <span class="amt">${fmtINR(margin)}</span> (${pct}%)`;
+    } else {
+      marginPreview.textContent = '';
+    }
+  }
+
+  // Explicit fallback in case native label->input forwarding is blocked
+  uploadBox.addEventListener('click', (e) => {
+    if (e.target !== imageInput) {
+      e.preventDefault();
+      imageInput.click();
+    }
+  });
+
+  document.getElementById('openAddBtn').addEventListener('click', openModal);
+  document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+
+  [nameInput, costInput, sellInput].forEach(el => el.addEventListener('input', updateFormState));
+
+  imageInput.addEventListener('change', () => {
+    const file = imageInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIM = 800;
+        let { width, height } = img;
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width > height) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          } else {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        pendingImage = canvas.toDataURL('image/jpeg', 0.8);
+
+        document.getElementById('uploadIcon').style.display = 'none';
+        uploadLabel.style.display = 'none';
+        let previewImg = uploadBox.querySelector('img');
+        if (!previewImg) {
+          previewImg = document.createElement('img');
+          uploadBox.insertBefore(previewImg, imageInput);
+        }
+        previewImg.src = pendingImage;
+      };
+      img.onerror = () => showToast("Couldn't read that image — try a different file.");
+      img.src = ev.target.result;
+    };
+    reader.onerror = () => showToast("Couldn't read that file — try again.");
+    reader.readAsDataURL(file);
+  });
+
+  submitBtn.addEventListener('click', () => {
+    const name = nameInput.value.trim();
+    const cost = parseFloat(costInput.value);
+    const sell = parseFloat(sellInput.value);
+    if (!name || !costInput.value || !sellInput.value) return;
+
+    items.unshift({
+      id: Date.now(),
+      name,
+      cost,
+      sell,
+      image: pendingImage
+    });
+    saveItems();
+    closeModal();
+    render();
+  });
+
+  document.getElementById('searchInput').addEventListener('input', render);
+
+  // ---- Backup (export) ----
+  document.getElementById('backupBtn').addEventListener('click', () => {
+    if (items.length === 0) {
+      showToast('Nothing to back up yet — add a piece first.');
+      return;
+    }
+    const dataStr = JSON.stringify(items, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `jewellery-catalog-backup-${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Backup downloaded.');
+  });
+
+  // ---- Restore (import) ----
+  const restoreInput = document.getElementById('restoreInput');
+  document.getElementById('restoreBtn').addEventListener('click', () => restoreInput.click());
+
+  restoreInput.addEventListener('change', () => {
+    const file = restoreInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        if (!Array.isArray(parsed)) throw new Error('not an array');
+        const valid = parsed.every(
+          (i) => i && typeof i.name === 'string' && typeof i.cost === 'number' && typeof i.sell === 'number'
+        );
+        if (!valid) throw new Error('invalid shape');
+
+        const replace = items.length === 0 || confirm(
+          `Replace your current catalog (${items.length} item${items.length === 1 ? '' : 's'}) with this backup (${parsed.length} item${parsed.length === 1 ? '' : 's'})?\n\nPress Cancel to merge instead — added as new items alongside what you already have.`
+        );
+
+        if (replace) {
+          items = parsed;
+        } else {
+          const existingIds = new Set(items.map((i) => i.id));
+          const merged = parsed.map((i) => (existingIds.has(i.id) ? { ...i, id: Date.now() + Math.random() } : i));
+          items = [...merged, ...items];
+        }
+        saveItems();
+        render();
+        showToast(`Restored ${parsed.length} item${parsed.length === 1 ? '' : 's'}.`);
+      } catch (e) {
+        showToast("That file doesn't look like a valid catalog backup.");
+      } finally {
+        restoreInput.value = '';
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  // ---- Init ----
+  loadItems();
+  render();
+</script>
+
+</body>
+</html>
