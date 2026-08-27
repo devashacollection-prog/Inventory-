@@ -57,6 +57,30 @@
   #searchInput::placeholder { color: var(--faint); }
   #searchInput:focus { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
 
+  .status-filter {
+    background: var(--card); border: 1px solid var(--border); border-radius: 999px;
+    padding: 0.6rem 1rem; color: var(--text); font-size: 0.85rem; outline: none; cursor: pointer;
+  }
+  .status-filter:focus { border-color: var(--gold); }
+
+  .status-badge {
+    position: absolute; top: 8px; left: 8px; z-index: 2; font-size: 0.6rem; font-weight: 600;
+    letter-spacing: 0.03em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px;
+    backdrop-filter: blur(4px);
+  }
+  .status-badge.instock { background: rgba(127,168,127,0.25); color: #a8d4a8; border: 1px solid rgba(127,168,127,0.4); }
+  .status-badge.soldout { background: rgba(239,68,68,0.25); color: #f5a3a3; border: 1px solid rgba(239,68,68,0.4); }
+  .item-card.soldout .item-img-wrap img { opacity: 0.45; }
+  .item-card.soldout .item-name { color: var(--faint); }
+
+  .status-toggle { display: flex; gap: 0.5rem; margin-bottom: 0.9rem; }
+  .status-option {
+    flex: 1; text-align: center; padding: 0.5rem; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--faint); font-size: 0.8rem; cursor: pointer; transition: all 0.15s;
+  }
+  .status-option.active.instock { border-color: #7fa87f; color: #a8d4a8; background: rgba(127,168,127,0.12); }
+  .status-option.active.soldout { border-color: #ef4444; color: #f5a3a3; background: rgba(239,68,68,0.12); }
+
   .btn-gold {
     display: flex; align-items: center; gap: 0.4rem; background: var(--gold); color: var(--bg);
     border: none; border-radius: 999px; padding: 0.6rem 1.2rem; font-size: 0.85rem; font-weight: 500;
@@ -217,6 +241,11 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
       <input type="text" id="searchInput" placeholder="Search pieces..." />
     </div>
+    <select id="statusFilter" class="status-filter">
+      <option value="all">All items</option>
+      <option value="instock">In stock</option>
+      <option value="soldout">Sold out</option>
+    </select>
     <button class="btn-outline" id="backupBtn" title="Download a backup of your catalog">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
       <span class="btn-label">Backup</span>
@@ -225,7 +254,7 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 9V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v4M7 14l5-5 5 5M12 9v12"/></svg>
       <span class="btn-label">Restore</span>
     </button>
-    <input type="file" id="restoreInput" accept="application/json,.json" class="visually-hidden" />
+    <input type="file" id="restoreInput" accept=".json,application/json,text/plain,text/*" class="visually-hidden" />
     <button class="btn-gold" id="openAddBtn">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
       Add piece
@@ -261,6 +290,11 @@
       <span id="uploadLabel">Upload photo</span>
       <input type="file" id="imageInput" accept="image/*" class="visually-hidden" />
     </label>
+
+    <div class="status-toggle" id="statusToggle">
+      <div class="status-option instock" data-status="instock">In stock</div>
+      <div class="status-option soldout" data-status="soldout">Sold out</div>
+    </div>
 
     <div class="field">
       <label>Item name</label>
@@ -332,6 +366,7 @@
     const summary = document.getElementById('summary');
     const noMatch = document.getElementById('noMatch');
     const search = document.getElementById('searchInput').value.toLowerCase();
+    const statusValue = document.getElementById('statusFilter').value;
 
     grid.innerHTML = '';
 
@@ -344,21 +379,30 @@
     empty.style.display = 'none';
     summary.style.display = 'grid';
 
-    const totalCost = items.reduce((s, i) => s + i.cost + (i.misc || 0), 0);
-    const totalSell = items.reduce((s, i) => s + i.sell, 0);
+    // Potential margin only makes sense for stock you still hold
+    const inStockItems = items.filter(i => (i.status || 'instock') !== 'soldout');
+    const totalCost = inStockItems.reduce((s, i) => s + i.cost + (i.misc || 0), 0);
+    const totalSell = inStockItems.reduce((s, i) => s + i.sell, 0);
     const totalMargin = totalSell - totalCost;
     const avgPct = totalCost > 0 ? Math.round((totalMargin / totalCost) * 100) : 0;
 
-    document.getElementById('sumCount').textContent = items.length;
+    document.getElementById('sumCount').textContent = `${inStockItems.length} / ${items.length}`;
     document.getElementById('sumCost').textContent = fmtINR(totalCost);
     document.getElementById('sumMargin').textContent = fmtINR(totalMargin);
-    document.getElementById('sumPct').textContent = avgPct + '% avg';
+    document.getElementById('sumPct').textContent = avgPct + '% avg · in stock only';
 
-    const filtered = items.filter(i => i.name.toLowerCase().includes(search));
+    let filtered = items.filter(i => i.name.toLowerCase().includes(search));
+    if (statusValue === 'instock') {
+      filtered = filtered.filter(i => (i.status || 'instock') !== 'soldout');
+    } else if (statusValue === 'soldout') {
+      filtered = filtered.filter(i => i.status === 'soldout');
+    }
 
     if (filtered.length === 0) {
       noMatch.style.display = 'block';
-      noMatch.textContent = `No pieces match "${document.getElementById('searchInput').value}".`;
+      noMatch.textContent = search
+        ? `No pieces match "${document.getElementById('searchInput').value}".`
+        : 'No pieces match this filter.';
       return;
     }
     noMatch.style.display = 'none';
@@ -368,11 +412,13 @@
       const totalItemCost = item.cost + misc;
       const margin = item.sell - totalItemCost;
       const pct = totalItemCost > 0 ? Math.round((margin / totalItemCost) * 100) : 0;
+      const status = item.status || 'instock';
 
       const card = document.createElement('div');
-      card.className = 'item-card';
+      card.className = `item-card${status === 'soldout' ? ' soldout' : ''}`;
       card.dataset.id = item.id;
       card.innerHTML = `
+        <span class="status-badge ${status}">${status === 'soldout' ? 'Sold out' : 'In stock'}</span>
         <div class="item-img-wrap">
           ${item.image
             ? `<img src="${item.image}" alt="${escapeHtml(item.name)}" />`
@@ -415,8 +461,21 @@
   const uploadBox = document.getElementById('uploadBox');
   const imageInput = document.getElementById('imageInput');
   const uploadLabel = document.getElementById('uploadLabel');
+  const statusToggle = document.getElementById('statusToggle');
 
   let editingId = null; // null = adding a new piece; otherwise id of piece being edited
+  let currentStatus = 'instock';
+
+  function setStatus(status) {
+    currentStatus = status;
+    statusToggle.querySelectorAll('.status-option').forEach(el => {
+      el.classList.toggle('active', el.dataset.status === status);
+    });
+  }
+
+  statusToggle.querySelectorAll('.status-option').forEach(el => {
+    el.addEventListener('click', () => setStatus(el.dataset.status));
+  });
 
   function openModal(id) {
     editingId = id ?? null;
@@ -436,6 +495,7 @@
       miscInput.value = item.misc || '';
       sellInput.value = item.sell;
       pendingImage = item.image || null;
+      setStatus(item.status || 'instock');
       if (pendingImage) {
         document.getElementById('uploadIcon').style.display = 'none';
         uploadLabel.style.display = 'none';
@@ -450,6 +510,7 @@
       modalTitle.textContent = 'New piece';
       submitBtn.textContent = 'Add to catalog';
       modalDeleteBtn.style.display = 'none';
+      setStatus('instock');
     }
 
     updateFormState();
@@ -473,6 +534,7 @@
     document.getElementById('uploadIcon').style.display = '';
     uploadLabel.style.display = '';
     modalDeleteBtn.style.display = 'none';
+    setStatus('instock');
     updateFormState();
   }
 
@@ -558,7 +620,7 @@
     if (editingId !== null) {
       const idx = items.findIndex((i) => i.id === editingId);
       if (idx !== -1) {
-        items[idx] = { ...items[idx], name, cost, misc, sell, image: pendingImage };
+        items[idx] = { ...items[idx], name, cost, misc, sell, image: pendingImage, status: currentStatus };
       }
       showToast('Piece updated.');
     } else {
@@ -568,7 +630,8 @@
         cost,
         misc,
         sell,
-        image: pendingImage
+        image: pendingImage,
+        status: currentStatus
       });
       showToast('Piece added.');
     }
@@ -589,6 +652,7 @@
   });
 
   document.getElementById('searchInput').addEventListener('input', render);
+  document.getElementById('statusFilter').addEventListener('change', render);
 
   // ---- Backup (export) ----
   document.getElementById('backupBtn').addEventListener('click', () => {
