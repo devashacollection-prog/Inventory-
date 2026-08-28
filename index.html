@@ -45,7 +45,7 @@
   .summary-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--faint); margin: 0; }
   .summary-value { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; margin: 0.2rem 0 0; }
   .summary-value.accent { color: var(--gold); }
-  .summary-sub { font-size: 0.62rem; color: var(--faint); margin: 0; }
+  .summary-sub { font-size: 0.62rem; color: var(--faint); margin: 0; line-height: 1.4; }
 
   .toolbar { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; }
   .search-wrap { position: relative; flex: 1; }
@@ -222,15 +222,15 @@
 <main>
   <div class="summary" id="summary" style="display:none;">
     <div class="summary-card">
-      <p class="summary-label">Pieces</p>
+      <p class="summary-label" id="sumCountLabel">Pieces</p>
       <p class="summary-value serif" id="sumCount">0</p>
     </div>
     <div class="summary-card">
-      <p class="summary-label">Stock cost</p>
+      <p class="summary-label" id="sumCostLabel">Stock cost</p>
       <p class="summary-value serif" id="sumCost">₹0</p>
     </div>
     <div class="summary-card">
-      <p class="summary-label">Potential margin</p>
+      <p class="summary-label" id="sumMarginLabel">Potential margin</p>
       <p class="summary-value serif accent" id="sumMargin">₹0</p>
       <p class="summary-sub" id="sumPct">0% avg</p>
     </div>
@@ -379,17 +379,53 @@
     empty.style.display = 'none';
     summary.style.display = 'grid';
 
-    // Potential margin only makes sense for stock you still hold
+    // Summary reflects whichever status filter is active, so the numbers
+    // always describe exactly the set of items being shown below.
     const inStockItems = items.filter(i => (i.status || 'instock') !== 'soldout');
-    const totalCost = inStockItems.reduce((s, i) => s + i.cost + (i.misc || 0), 0);
-    const totalSell = inStockItems.reduce((s, i) => s + i.sell, 0);
+    const soldOutItems = items.filter(i => i.status === 'soldout');
+
+    let summaryItems, countLabel, costLabel, marginLabel, pctSuffix;
+    if (statusValue === 'instock') {
+      summaryItems = inStockItems;
+      countLabel = 'In stock';
+      costLabel = 'Stock cost';
+      marginLabel = 'Estimated profit';
+      pctSuffix = '% avg · if all sell';
+    } else if (statusValue === 'soldout') {
+      summaryItems = soldOutItems;
+      countLabel = 'Sold';
+      costLabel = 'Cost of sold items';
+      marginLabel = 'Profit made';
+      pctSuffix = '% avg · realized';
+    } else {
+      summaryItems = items;
+      countLabel = 'Pieces';
+      costLabel = 'Total stock cost';
+      marginLabel = 'Profit made + estimated';
+      pctSuffix = '% avg · combined';
+    }
+
+    const totalCost = summaryItems.reduce((s, i) => s + i.cost + (i.misc || 0), 0);
+    const totalSell = summaryItems.reduce((s, i) => s + i.sell, 0);
     const totalMargin = totalSell - totalCost;
     const avgPct = totalCost > 0 ? Math.round((totalMargin / totalCost) * 100) : 0;
 
-    document.getElementById('sumCount').textContent = `${inStockItems.length} / ${items.length}`;
+    document.getElementById('sumCountLabel').textContent = countLabel;
+    document.getElementById('sumCostLabel').textContent = costLabel;
+    document.getElementById('sumMarginLabel').textContent = marginLabel;
+
+    if (statusValue === 'all') {
+      document.getElementById('sumCount').textContent = `${inStockItems.length} in stock · ${soldOutItems.length} sold`;
+      const soldMargin = soldOutItems.reduce((s, i) => s + i.sell - i.cost - (i.misc || 0), 0);
+      const potentialMargin = inStockItems.reduce((s, i) => s + i.sell - i.cost - (i.misc || 0), 0);
+      document.getElementById('sumMargin').textContent = fmtINR(totalMargin);
+      document.getElementById('sumPct').textContent = `${fmtINR(soldMargin)} made · ${fmtINR(potentialMargin)} estimated`;
+    } else {
+      document.getElementById('sumCount').textContent = summaryItems.length;
+      document.getElementById('sumMargin').textContent = fmtINR(totalMargin);
+      document.getElementById('sumPct').textContent = avgPct + pctSuffix;
+    }
     document.getElementById('sumCost').textContent = fmtINR(totalCost);
-    document.getElementById('sumMargin').textContent = fmtINR(totalMargin);
-    document.getElementById('sumPct').textContent = avgPct + '% avg · in stock only';
 
     let filtered = items.filter(i => i.name.toLowerCase().includes(search));
     if (statusValue === 'instock') {
